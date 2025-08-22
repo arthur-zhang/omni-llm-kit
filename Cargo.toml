@@ -1,0 +1,33 @@
+[package]
+name = "omni-llm-kit"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.99"
+arc-cow = "0.1.0"
+async-trait = "0.1.89"
+derive_more = { version = "2.0.1", features = ["full"] }
+futures-core = "0.3.31"
+schemars = "1.0.4"
+serde = { version = "1.0.219", features = ["derive", "rc"] }
+thiserror = "2.0.15"
+uuid = { version = "1.18.0", features = ["v4", "serde"] }
+serde_json = { version = "1.0", features = ["preserve_order", "raw_value"] }
+strum = { version = "0.27.1", features = ["derive"] }
+log = "0.4.27"
+bytes = "1.10.1"
+http = "1.3.1"
+futures = "0.3.31"
+url = "2.5.4"
+futures-util = "0.3.31"
+tokio = { version = "1.47.1", features = ["full"] }
+reqwest = { version = "0.12.23", features = ["stream", "__rustls", "rustls-tls"] }
+rustls = "0.23.26"
+rustls-platform-verifier = "0.5.0"
+chrono = "0.4.41"
+tiktoken-rs = "0.7.0"
+partial-json-fixer = "0.5.3"
+dotenvy = "0.15.7"
+
+
