@@ -1,2 +1,3 @@
 mod openai;
-pub use openai::*;
+pub (crate) use openai::*;
+pub use openai::Model;

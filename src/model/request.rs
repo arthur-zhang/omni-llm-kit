@@ -51,9 +51,17 @@ pub struct LanguageModelImage {
     // pub size: Size<DevicePixels>,
 }
 impl LanguageModelImage {
+    pub fn len(&self) -> usize {
+        0
+    }
+}
+impl LanguageModelImage {
     pub fn to_base64_url(&self) -> String {
         format!("data:image/png;base64,{}", self.source)
-    } 
+    }
+    pub fn is_empty(&self) -> bool {
+        false
+    }
 }
 
 

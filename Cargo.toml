@@ -29,5 +29,7 @@ chrono = "0.4.41"
 tiktoken-rs = "0.7.0"
 partial-json-fixer = "0.5.3"
 dotenvy = "0.15.7"
+parking_lot = "0.12.4"
+rustc-hash = "2.1.1"
 
 

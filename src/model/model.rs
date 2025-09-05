@@ -4,6 +4,7 @@ use crate::model::types::{
     LanguageModelProviderName, LanguageModelToolSchemaFormat,
 };
 use futures_core::stream::BoxStream;
+use crate::CompletionMode;
 use crate::model::LanguageModelRequest;
 
 #[async_trait::async_trait]
@@ -28,4 +29,20 @@ pub trait LanguageModel: Send + Sync {
     >;
     fn supports_tools(&self) -> bool;
     fn supports_burn_mode(&self) -> bool;
+    fn max_token_count_in_burn_mode(&self) -> Option<u64> {
+        None
+    }
 }
+
+pub trait LanguageModelExt: LanguageModel {
+    fn max_token_count_for_mode(&self, mode: CompletionMode) -> u64 {
+        match mode {
+            CompletionMode::Normal => self.max_token_count(),
+            CompletionMode::Max => self
+                .max_token_count_in_burn_mode()
+                .unwrap_or_else(|| self.max_token_count()),
+        }
+    }
+}
+
+impl LanguageModelExt for dyn LanguageModel + Send + Sync {}

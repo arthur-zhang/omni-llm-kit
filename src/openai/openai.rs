@@ -1,6 +1,6 @@
+use crate::http_client::{AsyncBody, HttpClient, Method, Request as HttpRequest};
 use anyhow::{Context as _, Result, anyhow};
 use futures::{AsyncBufReadExt, AsyncReadExt, StreamExt, io::BufReader, stream::BoxStream};
-use crate::http_client::{AsyncBody, HttpClient, Method, Request as HttpRequest};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{convert::TryFrom, future::Future};
@@ -405,7 +405,7 @@ pub async fn stream_completion(
         .header("Authorization", format!("Bearer {}", api_key));
 
     // println!("########################################################");
-    // println!("requst: \n{}", serde_json::to_string(&request)?);
+    // println!("request: \n{}", serde_json::to_string(&request)?);
     // println!("########################################################");
     let request = request_builder.body(AsyncBody::from(serde_json::to_string(&request)?))?;
     let mut response = client.send(request).await?;
@@ -526,4 +526,3 @@ pub fn embed<'a>(
         Ok(response)
     }
 }
-

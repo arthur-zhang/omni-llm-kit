@@ -6,10 +6,12 @@ mod reqwest_client;
 pub use reqwest_client::*;
 pub mod anthropic;
 pub mod openai;
+mod tool;
+
 pub use models::*;
 pub use model::*;
 pub use http_client::*;
-
+pub use tool::*;
 #[cfg(test)]
 mod tests {
     use crate::model::{LanguageModelRequest, LanguageModelRequestMessage, MessageContent, Role};
@@ -86,6 +88,7 @@ mod tests {
             match it {
                 Ok(event) => {
                     println!("Event: {:?}", event);
+                    println!("\n")
                 }
                 Err(e) => {
                     eprintln!("Error: {:?}", e);

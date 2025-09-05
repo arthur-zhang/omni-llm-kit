@@ -4,6 +4,7 @@ use crate::model::model::LanguageModel;
 use schemars::_private::serde_json;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::fmt;
+use std::ops::{Add, Sub};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -256,7 +257,41 @@ pub struct TokenUsage {
     #[serde(default, skip_serializing_if = "is_default")]
     pub cache_read_input_tokens: u64,
 }
+impl TokenUsage {
+    pub fn total_tokens(&self) -> u64 {
+        self.input_tokens
+            + self.output_tokens
+            + self.cache_read_input_tokens
+            + self.cache_creation_input_tokens
+    }
+}
+impl Add<TokenUsage> for TokenUsage {
+    type Output = Self;
 
+    fn add(self, other: Self) -> Self {
+        Self {
+            input_tokens: self.input_tokens + other.input_tokens,
+            output_tokens: self.output_tokens + other.output_tokens,
+            cache_creation_input_tokens: self.cache_creation_input_tokens
+                + other.cache_creation_input_tokens,
+            cache_read_input_tokens: self.cache_read_input_tokens + other.cache_read_input_tokens,
+        }
+    }
+}
+
+impl Sub<TokenUsage> for TokenUsage {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        Self {
+            input_tokens: self.input_tokens - other.input_tokens,
+            output_tokens: self.output_tokens - other.output_tokens,
+            cache_creation_input_tokens: self.cache_creation_input_tokens
+                - other.cache_creation_input_tokens,
+            cache_read_input_tokens: self.cache_read_input_tokens - other.cache_read_input_tokens,
+        }
+    }
+}
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UsageLimit {
@@ -311,8 +346,8 @@ pub enum LanguageModelToolSchemaFormat {
 
 #[derive(Clone)]
 pub struct ConfiguredModel {
-    pub provider: Arc<dyn LanguageModelProvider>,
-    pub model: Arc<dyn LanguageModel>,
+    pub provider: Arc<dyn LanguageModelProvider + Send + Sync>,
+    pub model: Arc<dyn LanguageModel + Send + Sync>,
 }
 
 impl ConfiguredModel {

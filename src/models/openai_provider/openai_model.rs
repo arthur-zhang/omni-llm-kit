@@ -45,7 +45,7 @@ impl OpenAiLanguageModel {
         //     .as_deref()
         //     .ok_or(anyhow!("api key not found"))?;
         let api_key = std::env::var("OPENAI_API_KEY")?;
-        let base_url = std::env::var("OPENAI_API_BASE_URL")?;
+        let base_url = std::env::var("OPENAI_BASE_URL")?;
 
         let response =
             openai::stream_completion(http_client.as_ref(), &base_url, &api_key, request).await?;
