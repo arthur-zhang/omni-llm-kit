@@ -8,14 +8,19 @@ use std::pin::Pin;
 use std::sync::Arc;
 // use futures_core::{future::BoxFuture, stream::{BoxStream};
 
-use futures_util::{FutureExt, StreamExt};
-use serde::{Deserialize, Serialize};
-use strum::EnumIter;
-use log::info;
+use crate::OpenAiSettings;
 use crate::http_client::HttpClient;
-use crate::model::{LanguageModel, LanguageModelCompletionError, LanguageModelCompletionEvent, LanguageModelId, LanguageModelName, LanguageModelProviderId, LanguageModelProviderName, LanguageModelRequest, LanguageModelToolChoice, LanguageModelToolResultContent, MessageContent, Role};
+use crate::model::{
+    LanguageModel, LanguageModelCompletionError, LanguageModelCompletionEvent, LanguageModelId,
+    LanguageModelName, LanguageModelProviderId, LanguageModelProviderName, LanguageModelRequest,
+    LanguageModelToolChoice, LanguageModelToolResultContent, MessageContent, Role,
+};
 use crate::models::openai_provider::event_mapper::OpenAiEventMapper;
 use crate::openai::{self, ImageUrl, ResponseStreamEvent};
+use futures_util::{FutureExt, StreamExt};
+use log::info;
+use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 
 pub const OPEN_AI_PROVIDER_ID: LanguageModelProviderId = LanguageModelProviderId::new("openai");
 pub const OPEN_AI_PROVIDER_NAME: LanguageModelProviderName =
@@ -34,18 +39,10 @@ impl OpenAiLanguageModel {
         request: openai::Request,
     ) -> anyhow::Result<BoxStream<'static, anyhow::Result<ResponseStreamEvent>>> {
         let http_client = self.http_client.clone();
-        //
-        // let settings = App::global::<OpenAiSettings>();
-        // let api_url = settings.api_url.as_str();
-        // println!("OpenAI API URL: {}", api_url);
-        // let api_key = self
-        //     .state
-        //     .api_key();
-        // let api_key = api_key
-        //     .as_deref()
-        //     .ok_or(anyhow!("api key not found"))?;
-        let api_key = std::env::var("OPENAI_API_KEY")?;
-        let base_url = std::env::var("OPENAI_BASE_URL")?;
+        let openai_settings =
+            global_registry::get!(OpenAiSettings).expect("OpenAiSettings not found");
+        let api_key = openai_settings.api_key.clone();
+        let base_url = openai_settings.api_url.clone();
 
         let response =
             openai::stream_completion(http_client.as_ref(), &base_url, &api_key, request).await?;
@@ -110,9 +107,9 @@ fn add_message_content_part(
         | (
             Role::Assistant,
             Some(openai::RequestMessage::Assistant {
-                     content: Some(content),
-                     ..
-                 }),
+                content: Some(content),
+                ..
+            }),
         )
         | (Role::System, Some(openai::RequestMessage::System { content, .. })) => {
             content.push_part(new_part);
@@ -195,13 +192,13 @@ pub fn into_open_ai(
                                 text: text.to_string(),
                             }]
                         } // LanguageModelToolResultContent::Image(image) => {
-                        //     vec![openai::MessagePart::Image {
-                        //         image_url: ImageUrl {
-                        //             url: image.to_base64_url(),
-                        //             detail: None,
-                        //         },
-                        //     }]
-                        // }
+                          //     vec![openai::MessagePart::Image {
+                          //         image_url: ImageUrl {
+                          //             url: image.to_base64_url(),
+                          //             detail: None,
+                          //         },
+                          //     }]
+                          // }
                     };
 
                     messages.push(openai::RequestMessage::Tool {

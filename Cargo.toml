@@ -31,5 +31,5 @@ partial-json-fixer = "0.5.3"
 dotenvy = "0.15.7"
 parking_lot = "0.12.4"
 rustc-hash = "2.1.1"
-
+global-registry = "0.1.0"
 

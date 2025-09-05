@@ -1,7 +1,7 @@
 mod common;
 mod http_client;
 pub mod model;
-pub mod models;
+mod models;
 mod reqwest_client;
 pub use reqwest_client::*;
 pub mod anthropic;

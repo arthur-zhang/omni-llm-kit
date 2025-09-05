@@ -11,9 +11,13 @@ use crate::openai;
 const PROVIDER_ID: LanguageModelProviderId = OPEN_AI_PROVIDER_ID;
 const PROVIDER_NAME: LanguageModelProviderName = OPEN_AI_PROVIDER_NAME;
 
+#[derive(Default, Clone, Debug, PartialEq)]
+pub struct OpenAiSettings {
+    pub api_url: String,
+    pub api_key: String,
+}
 pub struct OpenAiLanguageModelProvider {
     http_client: Arc<dyn HttpClient>,
-    // state: State,
 }
 
 impl OpenAiLanguageModelProvider {
