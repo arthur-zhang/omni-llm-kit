@@ -2,7 +2,13 @@
 name = "omni-llm-kit"
 version = "0.1.0"
 edition = "2024"
-
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/arthur-zhang/omni-llm-kit"
+keywords = ["llm", "agent"]
+description = "omni llm agent for all ai provider"
+authors = [
+    "Arthur Zhang <happyzhangya@gmail.com>",
+]
 [dependencies]
 anyhow = "1.0.99"
 arc-cow = "0.1.0"
