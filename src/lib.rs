@@ -17,7 +17,7 @@ mod tests {
     use crate::model::{LanguageModelRequest, LanguageModelRequestMessage, MessageContent, Role};
     use crate::models::{AnthropicLanguageModelProvider, OpenAiLanguageModelProvider};
     use crate::openai::Model;
-    use crate::{anthropic, reqwest_client};
+    use crate::{anthropic, reqwest_client, AnthropicSettings};
     use futures_util::StreamExt;
     use std::sync::Arc;
     use crate::anthropic::AnthropicModelMode;
@@ -61,10 +61,17 @@ mod tests {
     async fn test_anthropic_language_model() {
         dotenvy::dotenv().ok();
 
+        let api_url = std::env::var("ANTHROPIC_API_BASE_URL").unwrap();
+        let api_key = std::env::var("ANTHROPIC_API_KEY").unwrap();
+        let anthropic_settings = AnthropicSettings{
+            api_url: api_url,
+            api_key: api_key
+        };
+        global_registry::register_arc!(AnthropicSettings, anthropic_settings);
         let client = Arc::new(reqwest_client::ReqwestClient::new());
         let provider = AnthropicLanguageModelProvider::new(client);
         let model = provider.create_language_model(anthropic::Model::Custom {
-            name: "kimi-thinking-preview".to_string(),
+            name: "moonshot-v1-8k".to_string(),
             display_name: Some("kimi-k2-turbo-preview".into()),
             tool_override: None,
             max_tokens: 0,
@@ -80,7 +87,7 @@ mod tests {
 
         req.messages = vec![LanguageModelRequestMessage {
             role: Role::User,
-            content: vec![MessageContent::Text("what is result of 1+1, 深度思考".into())],
+            content: vec![MessageContent::Text("who are you".into())],
             cache: false,
         }];
         let mut stream = model.stream_completion(req).await.unwrap();
@@ -88,7 +95,6 @@ mod tests {
             match it {
                 Ok(event) => {
                     println!("Event: {:?}", event);
-                    println!("\n")
                 }
                 Err(e) => {
                     eprintln!("Error: {:?}", e);

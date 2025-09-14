@@ -2,7 +2,7 @@ use crate::anthropic::{
     AnthropicError, AnthropicModelMode, ContentDelta, Event, ResponseContent, ToolResultContent,
     ToolResultPart, Usage,
 };
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::{Context as _,  anyhow};
 use futures::Stream;
 use futures::{FutureExt, StreamExt, future::BoxFuture, stream::BoxStream};
 use std::collections::{BTreeMap, HashMap};
@@ -30,7 +30,8 @@ const PROVIDER_NAME: LanguageModelProviderName = model::ANTHROPIC_PROVIDER_NAME;
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct AnthropicSettings {
     pub api_url: String,
-    pub available_models: Vec<AvailableModel>,
+    // pub available_models: Vec<AvailableModel>,
+    pub api_key: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -89,76 +90,17 @@ pub struct AnthropicLanguageModelProvider {
 
 const ANTHROPIC_API_KEY_VAR: &str = "ANTHROPIC_API_KEY";
 
-pub struct State {
-    api_key: Option<String>,
-    api_key_from_env: bool,
-    // _subscription: Subscription,
-}
-
-// impl State {
-//
-//
-//     fn is_authenticated(&self) -> bool {
-//         self.api_key.is_some()
-//     }
-//
-//     fn authenticate(&self, cx: &mut Context<Self>) -> Task<Result<(), AuthenticateError>> {
-//         if self.is_authenticated() {
-//             return Task::ready(Ok(()));
-//         }
-//
-//         let credentials_provider = <dyn CredentialsProvider>::global(cx);
-//         let api_url = AllLanguageModelSettings::get_global(cx)
-//             .anthropic
-//             .api_url
-//             .clone();
-//
-//         cx.spawn(async move |this, cx| {
-//             let (api_key, from_env) = if let Ok(api_key) = std::env::var(ANTHROPIC_API_KEY_VAR) {
-//                 (api_key, true)
-//             } else {
-//                 let (_, api_key) = credentials_provider
-//                     .read_credentials(&api_url, &cx)
-//                     .await?
-//                     .ok_or(AuthenticateError::CredentialsNotFound)?;
-//                 (
-//                     String::from_utf8(api_key).context("invalid {PROVIDER_NAME} API key")?,
-//                     false,
-//                 )
-//             };
-//
-//             this.update(cx, |this, cx| {
-//                 this.api_key = Some(api_key);
-//                 this.api_key_from_env = from_env;
-//                 cx.notify();
-//             })?;
-//
-//             Ok(())
-//         })
-//     }
 
 impl AnthropicLanguageModelProvider {
     pub fn new(http_client: Arc<dyn HttpClient>) -> Self {
-        // let state = cx.new(|cx| State {
-        //     api_key: None,
-        //     api_key_from_env: false,
-        //     _subscription: cx.observe_global::<SettingsStore>(|_, cx| {
-        //         cx.notify();
-        //     }),
-        // });
-
-        Self {
-            http_client, // , state
-        }
+        Self { http_client }
     }
 
     pub fn create_language_model(&self, model: anthropic::Model) -> Arc<dyn LanguageModel> {
         Arc::new(AnthropicModel {
             id: LanguageModelId::from(model.id().to_string()),
             model,
-            // state: self.state.clone(),
             http_client: self.http_client.clone(),
-            // request_limiter: RateLimiter::new(4),
         })
     }
 }
@@ -247,18 +189,16 @@ impl LanguageModelProvider for AnthropicLanguageModelProvider {
 pub struct AnthropicModel {
     id: LanguageModelId,
     model: anthropic::Model,
-    // state: gpui::Entity<State>,
     http_client: Arc<dyn HttpClient>,
     // request_limiter: RateLimiter,
 }
 
 pub fn count_anthropic_tokens(
     request: LanguageModelRequest,
-    // cx: &App,
-) -> BoxFuture<'static, Result<u64>> {
+) -> BoxFuture<'static, anyhow::Result<u64>> {
     async move {
         let messages = request.messages;
-        let mut tokens_from_images = 0;
+        let tokens_from_images = 0;
         let mut string_messages = Vec::with_capacity(messages.len());
 
         for message in messages {
@@ -288,8 +228,8 @@ pub fn count_anthropic_tokens(
                         LanguageModelToolResultContent::Text(text) => {
                             string_contents.push_str(text);
                         } // LanguageModelToolResultContent::Image(image) => {
-                          //     tokens_from_images += image.estimate_tokens();
-                          // }
+                        //     tokens_from_images += image.estimate_tokens();
+                        // }
                     },
                 }
             }
@@ -313,43 +253,28 @@ pub fn count_anthropic_tokens(
         tiktoken_rs::num_tokens_from_messages("gpt-4", &string_messages)
             .map(|tokens| (tokens + tokens_from_images) as u64)
     }
-    .boxed()
+        .boxed()
 }
 
 impl AnthropicModel {
-    fn stream_completion(
+    async fn stream_completion(
         &self,
         request: anthropic::Request,
-    ) -> BoxFuture<
-        'static,
+    ) ->
         Result<
             BoxStream<'static, Result<anthropic::Event, AnthropicError>>,
             LanguageModelCompletionError,
-        >,
-    > {
+        >
+    {
         let http_client = self.http_client.clone();
 
-        // let Ok((api_key, api_url)) = cx.read_entity(&self.state, |state, cx| {
-        //     let settings = &AllLanguageModelSettings::get_global(cx).anthropic;
-        //     (state.api_key.clone(), settings.api_url.clone())
-        // }) else {
-        //     return futures::future::ready(Err(anyhow!("App state dropped").into())).boxed();
-        // };
+        let anthropic_settings =
+            global_registry::get!(AnthropicSettings).expect("AnthropicSettings not found");
+        let api_key = anthropic_settings.api_key.clone();
+        let api_url = anthropic_settings.api_url.clone();
 
-        let api_key = std::env::var("ANTHROPIC_API_KEY").ok();
-        let api_url = std::env::var("ANTHROPIC_API_BASE_URL").unwrap_or("".into());
-
-        async move {
-            let Some(api_key) = api_key else {
-                return Err(LanguageModelCompletionError::NoApiKey {
-                    provider: PROVIDER_NAME,
-                });
-            };
-            let request =
-                anthropic::stream_completion(http_client.as_ref(), &api_url, &api_key, request);
-            request.await.map_err(Into::into)
-        }
-        .boxed()
+         anthropic::stream_completion(http_client.as_ref(), &api_url, &api_key, request).await
+            .map_err(Into::<LanguageModelCompletionError>::into)
     }
 }
 #[async_trait::async_trait]
@@ -374,18 +299,6 @@ impl LanguageModel for AnthropicModel {
         self.model.max_token_count()
     }
 
-    // fn supports_images(&self) -> bool {
-    //     true
-    // }
-    //
-    // fn supports_tool_choice(&self, choice: LanguageModelToolChoice) -> bool {
-    //     match choice {
-    //         LanguageModelToolChoice::Auto
-    //         | LanguageModelToolChoice::Any
-    //         | LanguageModelToolChoice::None => true,
-    //     }
-    // }
-
     fn max_output_tokens(&self) -> Option<u64> {
         Some(self.model.max_output_tokens())
     }
@@ -404,41 +317,19 @@ impl LanguageModel for AnthropicModel {
             self.model.max_output_tokens(),
             self.model.mode(),
         );
-        let request = self.stream_completion(request);
-        // let future = self.request_limiter.stream(async move {
-        //     let response = request.await?;
-        //     Ok(AnthropicEventMapper::new().map_stream(response))
-        // });
-
-        let response = request.await?;
+        let response = self.stream_completion(request).await?;
         let stream = AnthropicEventMapper::new().map_stream(response);
         Ok(stream.boxed())
     }
 
-    // fn count_tokens(
-    //     &self,
-    //     request: LanguageModelRequest,
-    // ) -> BoxFuture<'static, Result<u64>> {
-    //     count_anthropic_tokens(request, cx)
-    // }
 
     fn supports_tools(&self) -> bool {
         true
     }
 
     fn supports_burn_mode(&self) -> bool {
-        todo!()
+        true
     }
-
-    // fn cache_configuration(&self) -> Option<LanguageModelCacheConfiguration> {
-    //     self.model
-    //         .cache_configuration()
-    //         .map(|config| LanguageModelCacheConfiguration {
-    //             max_cache_anchors: config.max_cache_anchors,
-    //             should_speculate: config.should_speculate,
-    //             min_total_token: config.min_total_token,
-    //         })
-    // }
 }
 
 pub fn into_anthropic(
@@ -522,14 +413,14 @@ pub fn into_anthropic(
                                     LanguageModelToolResultContent::Text(text) => {
                                         ToolResultContent::Plain(text.to_string())
                                     } // LanguageModelToolResultContent::Image(image) => {
-                                      //     ToolResultContent::Multipart(vec![ToolResultPart::Image {
-                                      //         source: anthropic::ImageSource {
-                                      //             source_type: "base64".to_string(),
-                                      //             media_type: "image/png".to_string(),
-                                      //             data: image.source.to_string(),
-                                      //         },
-                                      //     }])
-                                      // }
+                                    //     ToolResultContent::Multipart(vec![ToolResultPart::Image {
+                                    //         source: anthropic::ImageSource {
+                                    //             source_type: "base64".to_string(),
+                                    //             media_type: "image/png".to_string(),
+                                    //             data: image.source.to_string(),
+                                    //         },
+                                    //     }])
+                                    // }
                                 },
                                 cache_control: None,
                             })
@@ -639,8 +530,8 @@ impl AnthropicEventMapper {
 
     pub fn map_stream(
         mut self,
-        events: Pin<Box<dyn Send + Stream<Item = Result<Event, AnthropicError>>>>,
-    ) -> impl Stream<Item = Result<LanguageModelCompletionEvent, LanguageModelCompletionError>>
+        events: Pin<Box<dyn Send + Stream<Item=Result<Event, AnthropicError>>>>,
+    ) -> impl Stream<Item=Result<LanguageModelCompletionEvent, LanguageModelCompletionError>>
     {
         events.flat_map(move |event| {
             futures::stream::iter(match event {
